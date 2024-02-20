@@ -1,0 +1,11 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceDefaults
+metadata:
+  name: whatismyip
+  namespace: externalz
+spec:
+  protocol: tcp
+  destination:
+    addresses:
+      - "104.16.154.36"
+    port: 443

@@ -1,0 +1,14 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: unicorn-backend
+  namespace: unicorn
+spec:
+  destination:
+    name: unicorn-backend
+    namespace: unicorn
+  sources:
+    - name: unicorn-frontend
+      partition: default
+      namespace: unicorn
+      action: allow

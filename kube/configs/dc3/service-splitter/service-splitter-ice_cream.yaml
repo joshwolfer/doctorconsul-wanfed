@@ -1,0 +1,13 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceSplitter
+metadata:
+  name: ice-cream
+  namespace: banana-split
+spec:
+  splits:
+    - weight: 34
+      service: ice-cream-vanilla      # The splitter splits directly to a different service. This is a better option in Kube than trying to split to a subset based on tags. See the doctor consul manual.
+    - weight: 33
+      service: ice-cream-strawberry
+    - weight: 33
+      service: ice-cream-chocolate

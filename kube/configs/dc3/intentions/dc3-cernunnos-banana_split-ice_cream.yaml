@@ -1,0 +1,58 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: ice-cream           # Virtual service which then splits between ice-cream-vanilla, ice-cream-strawberry, and ice-cream-chocolate
+  namespace: banana-split
+spec:
+  destination:
+    name: ice-cream
+    namespace: banana-split
+  sources:
+    - name: neapolitan
+      namespace: banana-split
+      action: allow
+
+---
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: ice-cream-vanilla
+  namespace: banana-split
+spec:
+  destination:
+    name: ice-cream-vanilla
+    namespace: banana-split
+  sources:
+    - name: neapolitan
+      namespace: banana-split
+      action: allow
+
+---
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: ice-cream-strawberry
+  namespace: banana-split
+spec:
+  destination:
+    name: ice-cream-strawberry
+    namespace: banana-split
+  sources:
+    - name: neapolitan
+      namespace: banana-split
+      action: allow
+
+---
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: ice-cream-chocolate
+  namespace: banana-split
+spec:
+  destination:
+    name: ice-cream-chocolate
+    namespace: banana-split
+  sources:
+    - name: neapolitan
+      namespace: banana-split
+      action: allow

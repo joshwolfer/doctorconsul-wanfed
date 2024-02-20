@@ -1,0 +1,17 @@
+{
+  "Name": "web-chunky-targets",
+  "Service": {
+    "Service": "web-chunky",
+    "namespace": "default",
+    "partition": "default",
+    "Failover": {
+      "Targets": [
+        {
+          "Peer": "dc2-chunky",
+          "Namespace": "default",
+          "Partition": "default"
+        }
+      ]
+    }
+  }
+}

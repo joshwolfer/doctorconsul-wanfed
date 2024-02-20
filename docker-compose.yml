@@ -1,0 +1,628 @@
+services:
+
+# ==========================================
+#                Vault Config
+# ==========================================
+
+  # vault-server:
+  #   image: hashicorp/vault:1.11.3
+  #   container_name: vault-server
+  #   restart: always
+  #   # volumes:
+  #   #  - ./docker-configs/agent-configs/server1-dc1.hcl:/consul/config/server1-dc1.hcl
+  #   #  - ./docker-configs/certs/:/consul/config/certs/
+  #   networks:
+  #     - consul
+  #   ports:
+  #     - "8200:8200"
+  #   command: "server -dev -dev-root-token-id=root"
+
+# ==========================================
+#                DC1 Config
+# ==========================================
+
+  prometheus:
+    image: prom/prometheus:v2.42.0
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./docker-configs/prometheus/:/etc/prometheus
+      - prometheus-data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.200
+      dc2:
+        ipv4_address: 10.6.0.200
+
+  consul-server1-dc1:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-server1-dc1
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/server1-dc1.hcl:/consul/config/server1-dc1.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+     - ./license:/consul/config/license
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.2
+      wan:
+        ipv4_address: 192.169.7.2
+    ports:
+      - "8500:8500"
+      - "8600:53"
+      # - "8600:53/udp"
+    command: "agent -bootstrap-expect=1"
+    privileged: true
+
+# --------------------------------
+#         DC1 Gateways
+# --------------------------------
+
+  gateway-dc1:
+    image: ${CONVOY_IMAGE}
+    container_name: gateway-dc1
+    environment:
+      CONSUL_HTTP_ADDR: 10.5.0.2:8500   # Address of consul-server1-dc1
+      CONSUL_GRPC_ADDR: 10.5.0.2:8502   # Address of consul-server1-dc1
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC1}
+    command: [
+      "consul",
+      "connect", "envoy",
+      "-mesh-gateway",
+      "-register",
+      "-service", "dc1-mgw",
+      "-partition=default",
+      "-address", "10.5.0.5:443",
+      "-wan-address", "192.169.7.3:443",
+      # "--ignore-envoy-compatibility",
+      "-admin-bind=0.0.0.0:19000" ]
+      # "--",
+      # "-l", "debug"]
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+    ports:
+      - "19006:19000"
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.5
+      wan:
+        ipv4_address: 192.169.7.3
+
+  gateway-dc1-unicorn:
+    image: ${CONVOY_IMAGE}
+    container_name: gateway-dc1-unicorn
+    environment:
+      CONSUL_HTTP_ADDR: 10.5.0.12:8500   # Address of consul-server1-dc1
+      CONSUL_GRPC_ADDR: 10.5.0.12:8502   # Address of consul-server1-dc1
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC1_UNICORN}
+    command: [
+      "consul",
+      "connect", "envoy",
+      "-mesh-gateway",
+      "-register",
+      "-service", "dc1-unicorn-mgw",
+      "-partition=unicorn",
+      "-address", "10.5.0.6:443",
+      "-wan-address", "192.169.7.7:443",
+      # "--ignore-envoy-compatibility",
+      "-admin-bind=0.0.0.0:19000" ]
+      # "--",
+      # "-l", "debug"]
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+    ports:
+      - "19001:19000"
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.6
+      wan:
+        ipv4_address: 192.169.7.7
+
+# --------------------------------
+#         DC1 Clients
+# --------------------------------
+
+# (Partition: default)
+  consul-client-dc1-alpha:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-client-dc1-alpha
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/client-dc1-alpha.hcl:/consul/config/client-dc1-alpha.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+     - ./docker-configs/configs/services/dc1-josh-long.hcl:/consul/config/services-dc1-josh-long.hcl
+     - ./docker-configs/configs/services/dc1-josh.hcl:/consul/config/services-dc1-josh.hcl
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.10
+    command: "agent"
+
+# (Partition: donkey)
+  consul-client-dc1-charlie-ap1:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-client-dc1-charlie-ap1
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/client-dc1-charlie-ap1.hcl:/consul/config/dc1-client-charlie-ap1.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+     - ./docker-configs/configs/services/donkey-ap1.hcl:/consul/config/services-donkey-ap1.hcl
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.11
+    command: "agent"
+
+# (Partition: unicorn)
+  consul-client-dc1-unicorn:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-client-dc1-unicorn
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/client-dc1-unicorn.hcl:/consul/config/client-dc1-unicorn.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.12
+    command: "agent"
+
+# (Partition: proj1)
+  consul-client-dc1-echo-proj1:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-client-dc1-echo-proj1
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/client-dc1-echo-proj1.hcl:/consul/config/client-dc1-echo-proj1.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+     - ./docker-configs/configs/services/dc1-proj1-baphomet.hcl:/consul/config/services-dc1-proj1-baphomet.hcl
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.13
+    command: "agent"
+
+# --------------------------------
+#       DC1 Service Mesh
+# --------------------------------
+
+  # Service "Web" (DC1) and Sidecar proxy
+  web:
+    image: ${FAKESERVICE_IMAGE}
+    container_name: web
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -s --header 'X-Consul-Token: root' --request GET http://10.5.0.12:8500/v1/acl/token/00000000-0000-0000-0000-000000007777 | grep web || exit 1"]
+    #   interval: 10s
+    #   timeout: 10s
+    #   retries: 5
+    environment:
+      NAME: Web (DC1)
+      LISTEN_ADDR: 0.0.0.0:9090
+      MESSAGE: "This is the Web Application. <p> It fetches Web Upstream from the same local DC (DC1) and Web Chunky from a peering connection to DC2/chunky</p>"
+      SERVER_TYPE: "http"
+      UPSTREAM_URIS: "http://localhost:9091,http://localhost:9092"
+      HTTP_CLIENT_KEEP_ALIVES: "false"
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.100
+    ports:
+      - 9000:9090
+      - "19002:19000"
+  web_envoy:
+    image: ${CONVOY_IMAGE}
+    container_name: web_envoy
+    restart: unless-stopped              # This solve the ACL token race condition!
+    # depends_on:
+    #   web:
+    #     condition: service_healthy
+    environment:
+      CONSUL_HTTP_ADDR: 10.5.0.2:8500
+      CONSUL_GRPC_ADDR: 10.5.0.2:8502
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_HTTP_TOKEN: ${TOKEN_WEB}
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      SERVICE_CONFIG: /consul/config/services-dc1-web_v1.hcl
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+      - "./docker-configs/configs/services/dc1-web_v1.hcl:/consul/config/services-dc1-web_v1.hcl"
+    command: ["consul", "connect", "envoy",
+      "-sidecar-for", "web-v1",
+      "-partition=default",
+      # "--ignore-envoy-compatibility",
+      "-admin-bind=0.0.0.0:19000"]
+    network_mode: "service:web"
+
+  # Service "Web-upstream" (DC1) and Sidecar proxy
+  web-upstream:
+    image: ${FAKESERVICE_IMAGE}
+    container_name: web-upstream
+    environment:
+      NAME: Web Upstream (DC1)
+      LISTEN_ADDR: 0.0.0.0:8000
+      MESSAGE: "I am your upstream service. Yay."
+      SERVER_TYPE: "http"
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.101
+    ports:
+      - "19003:19000"
+  web-upstream_envoy:
+    image: ${CONVOY_IMAGE}
+    container_name: web-upstream_envoy
+    restart: unless-stopped              # This solve the ACL token race condition!
+    environment:
+      CONSUL_HTTP_ADDR: 10.5.0.2:8500
+      CONSUL_GRPC_ADDR: 10.5.0.2:8502
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_HTTP_TOKEN: ${TOKEN_WEB_UPSTREAM}
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      SERVICE_CONFIG: /consul/config/services-dc1-web-upstream_v1.hcl
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+      - "./docker-configs/configs/services/dc1-web-upstream_v1.hcl:/consul/config/services-dc1-web-upstream_v1.hcl"
+    command: ["consul", "connect", "envoy",
+      "-sidecar-for", "web-upstream-v1",
+      "-partition=default",
+      # "--ignore-envoy-compatibility",
+      "-admin-bind=0.0.0.0:19000"]
+    network_mode: "service:web-upstream"
+
+  # Service "unicorn-frontend" (DC1) and Sidecar proxy
+  unicorn-frontend-dc1:
+    image: ${FAKESERVICE_IMAGE}
+    container_name: unicorn-frontend-dc1
+    environment:
+      NAME: unicorn-frontend (DC1)
+      LISTEN_ADDR: 0.0.0.0:10000
+      MESSAGE: "<p><strong>The Unicorn Application</strong></p><p>This Unicorn-frontend application has 3 configured upstream services. Left to right:</p><p><strong>unicorn-backend (DC1)</strong><br />This is actually a service-resolver which is named the same as the real service DC1/unicorn/backend/unicorn-backend.<br />It utilizes failover targets in the following order:</p><ul><li>dc1/unicorn/backend/unicorn-backend</li><li>(peer) dc2-unicorn/backend/unicorn-backend</li><li>(peer) dc3-unicorn/unicorn/unicorn-backend</li></ul><p>To quickly nuke containers and observe the failover in real-time, use the zork.sh script option &quot;3) Unicorn Demo&quot;.</p><p><strong>unicorn-backend (DC2) - Static</strong><br />This is the static version of the &quot;(peer) dc2-unicorn/backend/unicorn-backend&quot; that is used in the service-resolver in the first upstream above.&nbsp;</p><p>It is handy to have duplicated explicit upstream defined, so we can better troubleshoot between issues with peering connections vs service-resolvers.</p><p><strong>unicorn-backend (DC3) - Static</strong><br />This is the static version of the &quot;(peer) dc3-unicorn/unicorn/unicorn-backend&quot; that is used in the service-resolver above.</p>"
+      SERVER_TYPE: "http"
+      UPSTREAM_URIS: "http://localhost:11000,http://localhost:11001,http://localhost:11002,http://localhost:11003"
+      HTTP_CLIENT_KEEP_ALIVES: "false"
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.110
+    ports:
+      - 10000:10000
+      - "19004:19000"
+  unicorn-frontend-dc1_envoy:
+    image: ${CONVOY_IMAGE}
+    container_name: unicorn-frontend-dc1_envoy
+    restart: unless-stopped              # This solve the ACL token race condition!
+    environment:
+      CONSUL_HTTP_ADDR: 10.5.0.12:8500
+      CONSUL_GRPC_ADDR: 10.5.0.12:8502
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_HTTP_TOKEN: ${TOKEN_UNICORN_FRONTEND_DC1}
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      SERVICE_CONFIG: /consul/config/services-dc1-unicorn-frontend.hcl
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+      - "./docker-configs/configs/services/dc1-unicorn-frontend.hcl:/consul/config/services-dc1-unicorn-frontend.hcl"
+    command: ["consul", "connect", "envoy",
+      "-sidecar-for", "unicorn-frontend-1",
+      "-partition=unicorn", "-namespace=frontend",
+      # "--ignore-envoy-compatibility",
+      "-admin-bind=0.0.0.0:19000"]
+    network_mode: "service:unicorn-frontend-dc1"
+
+  # Service "unicorn-backend" (DC1) and Sidecar proxy
+  unicorn-backend-dc1:
+    image: ${FAKESERVICE_IMAGE}
+    container_name: unicorn-backend-dc1
+    environment:
+      NAME: unicorn-backend (DC1)
+      LISTEN_ADDR: 0.0.0.0:10001
+      MESSAGE: "Hello World"
+      SERVER_TYPE: "http"
+      UPSTREAM_URIS: ""
+      HTTP_CLIENT_KEEP_ALIVES: "false"
+    networks:
+      dc1:
+        ipv4_address: 10.5.0.111
+    ports:
+      - "19005:19000"
+  unicorn-backend-dc1_envoy:
+    image: ${CONVOY_IMAGE}
+    container_name: unicorn-backend-dc1_envoy
+    restart: unless-stopped              # This solve the ACL token race condition!
+    environment:
+      CONSUL_HTTP_ADDR: 10.5.0.12:8500
+      CONSUL_GRPC_ADDR: 10.5.0.12:8502
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_HTTP_TOKEN: ${TOKEN_UNICORN_BACKEND_DC1}
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      SERVICE_CONFIG: /consul/config/services-dc1-unicorn-backend.hcl
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+      - "./docker-configs/configs/services/dc1-unicorn-backend.hcl:/consul/config/services-dc1-unicorn-backend.hcl"
+    command: ["consul", "connect", "envoy",
+      "-sidecar-for", "unicorn-backend-1",
+      "-partition=unicorn", "-namespace=backend",
+      # "--ignore-envoy-compatibility",
+      "-admin-bind=0.0.0.0:19000"]
+    network_mode: "service:unicorn-backend-dc1"
+
+  # ==========================================
+  #                DC2 Config
+  # ==========================================
+
+  consul-server1-dc2:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-server1-dc2
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/server1-dc2.hcl:/consul/config/server1-dc2.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+     - ./license:/consul/config/license
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.2
+      wan:
+        ipv4_address: 192.169.7.4
+    ports:
+      - "8501:8500"
+    command: "agent -bootstrap-expect=1"
+    privileged: true
+
+# --------------------------------
+#         DC2 Gateways
+# --------------------------------
+
+  gateway-dc2:
+    image: ${CONVOY_IMAGE}
+    container_name: gateway-dc2
+    environment:
+      CONSUL_HTTP_ADDR: 10.6.0.2:8500   # Address of consul-server1-dc2
+      CONSUL_GRPC_ADDR: 10.6.0.2:8502   # Address of consul-server1-dc2
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC2}
+    command: [
+      "consul",
+      "connect", "envoy",
+      "-mesh-gateway",
+      # "--ignore-envoy-compatibility",
+      "-register",
+      "-service", "dc2-mgw",
+      "-partition=default",
+      "-address", "10.6.0.5:443",
+      "-wan-address", "192.169.7.5:443",
+      "-admin-bind=0.0.0.0:19000" ]
+      # "--",
+      # "-l", "debug"]
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+    ports:
+      - "19007:19000"
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.5
+      wan:
+        ipv4_address: 192.169.7.5
+
+  gateway-dc2-chunky:
+    image: ${CONVOY_IMAGE}
+    container_name: gateway-dc2-chunky
+    environment:
+      CONSUL_HTTP_ADDR: 10.6.0.11:8500   # Address of consul-server1-dc2
+      CONSUL_GRPC_ADDR: 10.6.0.11:8502   # Address of consul-server1-dc2
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC2_CHUNKY}
+    command: [
+      "consul",
+      "connect", "envoy",
+      "-mesh-gateway",
+      # "--ignore-envoy-compatibility",
+      "-register",
+      "-service", "dc2-chunky-mgw",
+      "-partition=chunky",
+      "-address", "10.6.0.6:443",
+      "-wan-address", "192.169.7.6:443",
+      "-admin-bind=0.0.0.0:19000" ]
+      # "--",
+      # "-l", "debug"]
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+    ports:
+      - "19008:19000"
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.6
+      wan:
+        ipv4_address: 192.169.7.6
+
+  gateway-dc2-unicorn:
+    image: ${CONVOY_IMAGE}
+    container_name: gateway-dc2-unicorn
+    environment:
+      CONSUL_HTTP_ADDR: 10.6.0.12:8500   # Address of consul-server1-dc2
+      CONSUL_GRPC_ADDR: 10.6.0.12:8502   # Address of consul-server1-dc2
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC2_UNICORN}
+    command: [
+      "consul",
+      "connect", "envoy",
+      "-mesh-gateway",
+      # "--ignore-envoy-compatibility",
+      "-register",
+      "-service", "dc2-unicorn-mgw",
+      "-partition=unicorn",
+      "-address", "10.6.0.7:443",
+      "-wan-address", "192.169.7.8:443",
+      "-admin-bind=0.0.0.0:19000" ]
+      # "--",
+      # "-l", "debug"]
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+    ports:
+      - "19009:19000"
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.7
+      wan:
+        ipv4_address: 192.169.7.8
+
+# --------------------------------
+#         DC2 Clients
+# --------------------------------
+
+# (Partition: default)
+  consul-client-dc2-bravo:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-client-dc2-bravo
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/client-dc2-bravo.hcl:/consul/config/client-dc2-bravo.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+     - ./docker-configs/configs/services/dc2-josh.hcl:/consul/config/services-dc2-josh.hcl
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.10
+    command: "agent"
+
+# (Partition: chunky)
+  consul-client-dc2-foxtrot:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-client-dc2-foxtrot
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/client-dc2-foxtrot.hcl:/consul/config/client-dc2-foxtrot.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.11
+    command: "agent"
+
+# (Partition: unicorn)
+  consul-client-dc2-unicorn:
+    image: ${CONSUL_IMAGE}
+    container_name: consul-client-dc2-unicorn
+    restart: always
+    volumes:
+     - ./docker-configs/agent-configs/client-dc2-unicorn.hcl:/consul/config/client-dc2-unicorn.hcl
+     - ./docker-configs/certs/:/consul/config/certs/
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.12
+    command: "agent"
+
+
+# --------------------------------
+#       DC2 Service Mesh
+# --------------------------------
+
+  # Service "Web-chunky" (DC2) and Sidecar proxy
+  web-chunky:
+    image: ${FAKESERVICE_IMAGE}
+    container_name: web-chunky
+    environment:
+      NAME: Web Chunky (DC2)
+      LISTEN_ADDR: 0.0.0.0:8000
+      MESSAGE: "I am Web Chunky!"
+      SERVER_TYPE: "http"
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.100
+    ports:
+      - "19010:19000"
+  web-chunky_envoy:
+    image: ${CONVOY_IMAGE}
+    container_name: web-chunky_envoy
+    restart: unless-stopped              # This solve the ACL token race condition!
+    environment:
+      CONSUL_HTTP_ADDR: consul-client-dc2-foxtrot:8500
+      CONSUL_GRPC_ADDR: consul-client-dc2-foxtrot:8502
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_HTTP_TOKEN: ${TOKEN_WEB_CHUNKY}
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      SERVICE_CONFIG: /consul/config/services-dc2-web-chunky_v1.hcl
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+      - ./docker-configs/configs/services/dc2-web-chunky_v1.hcl:/consul/config/services-dc2-web-chunky_v1.hcl
+    command: ["consul", "connect", "envoy",
+      "-sidecar-for", "web-chunky-v1",
+      "-partition=chunky",
+      # "--ignore-envoy-compatibility",
+      "-admin-bind=0.0.0.0:19000"]
+    network_mode: "service:web-chunky"
+
+  # Service "unicorn-backend" (DC2) and Sidecar proxy
+  unicorn-backend-dc2:
+    image: ${FAKESERVICE_IMAGE}
+    container_name: unicorn-backend-dc2
+    environment:
+      NAME: unicorn-backend (DC2)
+      LISTEN_ADDR: 0.0.0.0:10001
+      MESSAGE: "Hello World"
+      SERVER_TYPE: "http"
+      UPSTREAM_URIS: ""
+      HTTP_CLIENT_KEEP_ALIVES: "false"
+    networks:
+      dc2:
+        ipv4_address: 10.6.0.111
+    ports:
+      - "19011:19000"
+  unicorn-backend-dc2_envoy:
+    image: ${CONVOY_IMAGE}
+    container_name: unicorn-backend-dc2_envoy
+    restart: unless-stopped              # This solve the ACL token race condition!
+    environment:
+      CONSUL_HTTP_ADDR: 10.6.0.12:8500
+      CONSUL_GRPC_ADDR: 10.6.0.12:8502
+      CONSUL_LICENSE_PATH: "/consul/config/license"
+      CONSUL_HTTP_TOKEN: ${TOKEN_UNICORN_BACKEND_DC2}
+      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
+      SERVICE_CONFIG: /consul/config/services-dc2-unicorn-backend.hcl
+    volumes:
+      - ./license:/consul/config/license
+      - ./docker-configs/certs/:/consul/config/certs/
+      - "./docker-configs/configs/services/dc2-unicorn-backend.hcl:/consul/config/services-dc2-unicorn-backend.hcl"
+    command: ["consul", "connect", "envoy",
+      "-sidecar-for", "unicorn-backend-1",
+      # "--ignore-envoy-compatibility",
+      "-partition=unicorn", "-namespace=backend", "-admin-bind=0.0.0.0:19000"]
+    network_mode: "service:unicorn-backend-dc2"
+
+
+  # ==========================================
+  #              Network Config
+  # ==========================================
+
+networks:
+  dc1:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16
+  dc2:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.6.0.0/16
+  wan:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 192.169.7.0/24
+         gateway: 192.169.7.1
+
+volumes:
+  prometheus-data:                      # This allows prometheus to persist data to disk. Need to verify that my kill script nukes it.
+
+
+
+

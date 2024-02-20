@@ -1,0 +1,8 @@
+{
+  "Name": "unicorn-partition",
+  "Service": {
+    "Service": "unicorn-backend",
+    "Namespace": "backend",
+    "Partition": "unicorn"
+  }
+}
