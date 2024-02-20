@@ -1,40 +1,8 @@
 services:
 
 # ==========================================
-#                Vault Config
-# ==========================================
-
-  # vault-server:
-  #   image: hashicorp/vault:1.11.3
-  #   container_name: vault-server
-  #   restart: always
-  #   # volumes:
-  #   #  - ./docker-configs/agent-configs/server1-dc1.hcl:/consul/config/server1-dc1.hcl
-  #   #  - ./docker-configs/certs/:/consul/config/certs/
-  #   networks:
-  #     - consul
-  #   ports:
-  #     - "8200:8200"
-  #   command: "server -dev -dev-root-token-id=root"
-
-# ==========================================
 #                DC1 Config
 # ==========================================
-
-  prometheus:
-    image: prom/prometheus:v2.42.0
-    container_name: prometheus
-    ports:
-      - 9090:9090
-    volumes:
-      - ./docker-configs/prometheus/:/etc/prometheus
-      - prometheus-data:/prometheus
-    command: --config.file=/etc/prometheus/prometheus.yml
-    networks:
-      dc1:
-        ipv4_address: 10.5.0.200
-      dc2:
-        ipv4_address: 10.6.0.200
 
   consul-server1-dc1:
     image: ${CONSUL_IMAGE}
@@ -78,6 +46,7 @@ services:
       "-partition=default",
       "-address", "10.5.0.5:443",
       "-wan-address", "192.169.7.3:443",
+      "-expose-servers",                      # WAN Fed stuff
       # "--ignore-envoy-compatibility",
       "-admin-bind=0.0.0.0:19000" ]
       # "--",
@@ -92,39 +61,6 @@ services:
         ipv4_address: 10.5.0.5
       wan:
         ipv4_address: 192.169.7.3
-
-  gateway-dc1-unicorn:
-    image: ${CONVOY_IMAGE}
-    container_name: gateway-dc1-unicorn
-    environment:
-      CONSUL_HTTP_ADDR: 10.5.0.12:8500   # Address of consul-server1-dc1
-      CONSUL_GRPC_ADDR: 10.5.0.12:8502   # Address of consul-server1-dc1
-      CONSUL_LICENSE_PATH: "/consul/config/license"
-      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
-      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC1_UNICORN}
-    command: [
-      "consul",
-      "connect", "envoy",
-      "-mesh-gateway",
-      "-register",
-      "-service", "dc1-unicorn-mgw",
-      "-partition=unicorn",
-      "-address", "10.5.0.6:443",
-      "-wan-address", "192.169.7.7:443",
-      # "--ignore-envoy-compatibility",
-      "-admin-bind=0.0.0.0:19000" ]
-      # "--",
-      # "-l", "debug"]
-    volumes:
-      - ./license:/consul/config/license
-      - ./docker-configs/certs/:/consul/config/certs/
-    ports:
-      - "19001:19000"
-    networks:
-      dc1:
-        ipv4_address: 10.5.0.6
-      wan:
-        ipv4_address: 192.169.7.7
 
 # --------------------------------
 #         DC1 Clients
@@ -307,7 +243,7 @@ services:
       - "./docker-configs/configs/services/dc1-unicorn-frontend.hcl:/consul/config/services-dc1-unicorn-frontend.hcl"
     command: ["consul", "connect", "envoy",
       "-sidecar-for", "unicorn-frontend-1",
-      "-partition=unicorn", "-namespace=frontend",
+      "-partition=default", "-namespace=frontend",
       # "--ignore-envoy-compatibility",
       "-admin-bind=0.0.0.0:19000"]
     network_mode: "service:unicorn-frontend-dc1"
@@ -345,7 +281,7 @@ services:
       - "./docker-configs/configs/services/dc1-unicorn-backend.hcl:/consul/config/services-dc1-unicorn-backend.hcl"
     command: ["consul", "connect", "envoy",
       "-sidecar-for", "unicorn-backend-1",
-      "-partition=unicorn", "-namespace=backend",
+      "-partition=default", "-namespace=backend",
       # "--ignore-envoy-compatibility",
       "-admin-bind=0.0.0.0:19000"]
     network_mode: "service:unicorn-backend-dc1"
@@ -395,6 +331,7 @@ services:
       "-partition=default",
       "-address", "10.6.0.5:443",
       "-wan-address", "192.169.7.5:443",
+      "-expose-servers", 
       "-admin-bind=0.0.0.0:19000" ]
       # "--",
       # "-l", "debug"]
@@ -408,72 +345,6 @@ services:
         ipv4_address: 10.6.0.5
       wan:
         ipv4_address: 192.169.7.5
-
-  gateway-dc2-chunky:
-    image: ${CONVOY_IMAGE}
-    container_name: gateway-dc2-chunky
-    environment:
-      CONSUL_HTTP_ADDR: 10.6.0.11:8500   # Address of consul-server1-dc2
-      CONSUL_GRPC_ADDR: 10.6.0.11:8502   # Address of consul-server1-dc2
-      CONSUL_LICENSE_PATH: "/consul/config/license"
-      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
-      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC2_CHUNKY}
-    command: [
-      "consul",
-      "connect", "envoy",
-      "-mesh-gateway",
-      # "--ignore-envoy-compatibility",
-      "-register",
-      "-service", "dc2-chunky-mgw",
-      "-partition=chunky",
-      "-address", "10.6.0.6:443",
-      "-wan-address", "192.169.7.6:443",
-      "-admin-bind=0.0.0.0:19000" ]
-      # "--",
-      # "-l", "debug"]
-    volumes:
-      - ./license:/consul/config/license
-      - ./docker-configs/certs/:/consul/config/certs/
-    ports:
-      - "19008:19000"
-    networks:
-      dc2:
-        ipv4_address: 10.6.0.6
-      wan:
-        ipv4_address: 192.169.7.6
-
-  gateway-dc2-unicorn:
-    image: ${CONVOY_IMAGE}
-    container_name: gateway-dc2-unicorn
-    environment:
-      CONSUL_HTTP_ADDR: 10.6.0.12:8500   # Address of consul-server1-dc2
-      CONSUL_GRPC_ADDR: 10.6.0.12:8502   # Address of consul-server1-dc2
-      CONSUL_LICENSE_PATH: "/consul/config/license"
-      CONSUL_CACERT: "/consul/config/certs/consul-agent-ca.pem"
-      CONSUL_HTTP_TOKEN: ${TOKEN_GATEWAY_DC2_UNICORN}
-    command: [
-      "consul",
-      "connect", "envoy",
-      "-mesh-gateway",
-      # "--ignore-envoy-compatibility",
-      "-register",
-      "-service", "dc2-unicorn-mgw",
-      "-partition=unicorn",
-      "-address", "10.6.0.7:443",
-      "-wan-address", "192.169.7.8:443",
-      "-admin-bind=0.0.0.0:19000" ]
-      # "--",
-      # "-l", "debug"]
-    volumes:
-      - ./license:/consul/config/license
-      - ./docker-configs/certs/:/consul/config/certs/
-    ports:
-      - "19009:19000"
-    networks:
-      dc2:
-        ipv4_address: 10.6.0.7
-      wan:
-        ipv4_address: 192.169.7.8
 
 # --------------------------------
 #         DC2 Clients
@@ -555,7 +426,7 @@ services:
       - ./docker-configs/configs/services/dc2-web-chunky_v1.hcl:/consul/config/services-dc2-web-chunky_v1.hcl
     command: ["consul", "connect", "envoy",
       "-sidecar-for", "web-chunky-v1",
-      "-partition=chunky",
+      "-partition=default",
       # "--ignore-envoy-compatibility",
       "-admin-bind=0.0.0.0:19000"]
     network_mode: "service:web-chunky"
@@ -594,7 +465,7 @@ services:
     command: ["consul", "connect", "envoy",
       "-sidecar-for", "unicorn-backend-1",
       # "--ignore-envoy-compatibility",
-      "-partition=unicorn", "-namespace=backend", "-admin-bind=0.0.0.0:19000"]
+      "-partition=default", "-namespace=backend", "-admin-bind=0.0.0.0:19000"]
     network_mode: "service:unicorn-backend-dc2"
 
 
@@ -619,10 +490,4 @@ networks:
      config:
        - subnet: 192.169.7.0/24
          gateway: 192.169.7.1
-
-volumes:
-  prometheus-data:                      # This allows prometheus to persist data to disk. Need to verify that my kill script nukes it.
-
-
-
 

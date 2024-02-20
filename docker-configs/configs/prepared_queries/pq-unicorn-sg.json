@@ -3,7 +3,7 @@
   "Service": {
     "Service": "unicorn-backend",
     "namespace": "backend",
-    "partition": "unicorn",
+    "partition": "default",
     "SamenessGroup": "unicorn"
   }
 }

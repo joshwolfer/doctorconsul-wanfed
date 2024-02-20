@@ -63,7 +63,7 @@ echo -e "${GRN}ACL Token: 000000009999 (web-chunky:dc2):${NC}"
 
 consul acl token create \
     -service-identity=web-chunky:dc2 \
-    -partition=chunky \
+    -partition=default \
     -namespace=default \
     -secret="00000000-0000-0000-0000-000000009999" \
     -accessor="00000000-0000-0000-0000-000000009999" \
@@ -85,15 +85,6 @@ consul config write -http-addr="$DC2" ./docker-configs/configs/service-defaults/
       # Something funky is going on with service-defaults. Must enable the first to get static peer connections working. Can't get service-resolver to work
       # Will leave these commented out for now.
 
-# ------------------------------------------
-# Export services across Peers
-# ------------------------------------------
-
-echo -e ""
-echo -e "${GRN}exported-services:${NC}"
-
-# DC2/chunky
-consul config write -http-addr="$DC2" ./docker-configs/configs/exported-services/exported-services-dc2-chunky.hcl
 
 # ------------------------------------------
 #              Intentions

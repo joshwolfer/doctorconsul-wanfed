@@ -18,25 +18,20 @@
 echo -e ""
 echo -e "${GRN}Create Unicorn NSs in DC1${NC}"
 # Create Unicorn NSs in DC1
-consul namespace create -name frontend -partition=unicorn -http-addr="$DC1"
-consul namespace create -name backend -partition=unicorn -http-addr="$DC1"
+consul namespace create -name frontend -partition=default -http-addr="$DC1"
+consul namespace create -name backend -partition=default -http-addr="$DC1"
 
 echo -e ""
 echo -e "${GRN}Create Unicorn NSs in DC2${NC}"
 # Create Unicorn NSs in DC2
-consul namespace create -name frontend -partition=unicorn -http-addr="$DC2"
-consul namespace create -name backend -partition=unicorn -http-addr="$DC2"
+consul namespace create -name frontend -partition=default -http-addr="$DC2"
+consul namespace create -name backend -partition=default -http-addr="$DC2"
 
-  # ------------------------------------------
-  #           proxy-defaults
-  # ------------------------------------------
+# ------------------------------------------
+#           proxy-defaults
+# ------------------------------------------
 
-echo -e ""
-echo -e "${GRN}proxy-defaults:${NC}"
-echo -e ""
-
-echo -e "${GRN}(DC1) unicorn Partition:${NC} $(consul config write -http-addr="$DC1" ./docker-configs/configs/proxy-defaults/dc1-unicorn-proxydefaults.hcl)"
-echo -e "${GRN}(DC2) unicorn Partition:${NC} $(consul config write -http-addr="$DC2" ./docker-configs/configs/proxy-defaults/dc2-unicorn-proxydefaults.hcl)"
+#  Proxy defaults already defined in default partition. No non-default partitions so no more proxy - defaults.
 
 # ------------------------------------------
 #         Create ACL tokens in DC1
@@ -46,10 +41,10 @@ echo -e "${GRN}(DC2) unicorn Partition:${NC} $(consul config write -http-addr="$
 echo -e ""
 echo -e "${GRN}ACL Token: 000000004444 (-policy-name=unicorn):${NC}"
 
-consul acl policy create -name unicorn -partition=unicorn -namespace=default -rules @./docker-configs/acl/dc1-unicorn-frontend.hcl
+consul acl policy create -name unicorn -partition=default -namespace=default -rules @./docker-configs/acl/dc1-unicorn-frontend.hcl
 
 # consul acl token create \
-#     -partition=unicorn \
+#     -partition=default \
 #     -namespace=default \
 #     -secret="00000000-0000-0000-0000-000000004444" \
 #     -accessor="00000000-0000-0000-0000-000000004444" \
@@ -60,7 +55,7 @@ consul acl policy create -name unicorn -partition=unicorn -namespace=default -ru
 
 consul acl token create \
     -service-identity=unicorn-frontend:dc1 \
-    -partition=unicorn \
+    -partition=default \
     -namespace=frontend \
     -secret="00000000-0000-0000-0000-000000004444" \
     -accessor="00000000-0000-0000-0000-000000004444" \
@@ -74,7 +69,7 @@ echo -e "${GRN}ACL Token: 000000005555 (unicorn-backend:dc1):${NC}"
 
 consul acl token create \
     -service-identity=unicorn-backend:dc1 \
-    -partition=unicorn \
+    -partition=default \
     -namespace=backend \
     -secret="00000000-0000-0000-0000-000000005555" \
     -accessor="00000000-0000-0000-0000-000000005555" \
@@ -92,7 +87,7 @@ echo -e "${GRN}ACL Token: 000000006666 (unicorn-backend:dc2):${NC}"
 
 consul acl token create \
     -service-identity=unicorn-backend:dc2 \
-    -partition=unicorn \
+    -partition=default \
     -namespace=backend \
     -secret="00000000-0000-0000-0000-000000006666" \
     -accessor="00000000-0000-0000-0000-000000006666" \
@@ -109,13 +104,13 @@ consul acl policy create \
   -name "cross-namespace-sd" \
   -description "cross-namespace service discovery" \
   -rules @./docker-configs/acl/cross-namespace-discovery.hcl \
-  -partition=unicorn \
+  -partition=default \
   -namespace=default \
   -http-addr="$DC1"
 
 consul namespace update -name frontend \
   -default-policy-name="cross-namespace-sd" \
-  -partition=unicorn \
+  -partition=default \
   -http-addr="$DC1"
 
 # We need this to make is so unicorn-frontend can read unicorn-backend (discovery).
@@ -136,20 +131,6 @@ consul config write -http-addr="$DC1" ./docker-configs/configs/service-defaults/
 consul config write -http-addr="$DC2" ./docker-configs/configs/service-defaults/unicorn-backend-defaults.hcl
 
 # ------------------------------------------
-# Export services across Peers
-# ------------------------------------------
-
-echo -e ""
-echo -e "${GRN}exported-services:${NC}"
-
-# Export the DC1/unicorn/backend/unicorn-backend service to DC1/default
-# DC1/unicorn (exports unicorn cross-partition to default)
-consul config write -http-addr="$DC1" ./docker-configs/configs/exported-services/exported-services-dc1-unicorn.hcl
-
-# Export the DC2/unicorn/backend/unicorn-backend service to DC1/default
-consul config write -http-addr="$DC2" ./docker-configs/configs/exported-services/exported-services-dc2-unicorn_backend.hcl
-
-# ------------------------------------------
 #              Intentions
 # ------------------------------------------
 
@@ -167,17 +148,19 @@ consul config write -http-addr="$DC1" ./docker-configs/configs/intentions/dc1-un
 
 echo -e ""
 echo -e "${GRN}Service-resolvers:${NC}"
-
-consul config write -http-addr="$DC1" ./docker-configs/configs/service-resolver/dc1-unicorn-backend-failover.hcl
+echo -e "${YELL}no service resolver for now, because it uses peers ${NC}"
+# consul config write -http-addr="$DC1" ./docker-configs/configs/service-resolver/dc1-unicorn-backend-failover.hcl
 echo -e ""
 
 # ------------------------------------------
 #              Sameness Groups
 # ------------------------------------------
 
-echo -e ""
-echo -e "${GRN}Sameness Group 'Unicorn':${NC}"
-consul config write -http-addr="$DC1" ./docker-configs/configs/sameness-groups/dc1-unicorn-ssg-unicorn.hcl
+# Fix SG later
+
+# echo -e ""
+# echo -e "${GRN}Sameness Group 'Unicorn':${NC}"
+# consul config write -http-addr="$DC1" ./docker-configs/configs/sameness-groups/dc1-unicorn-ssg-unicorn.hcl
 
 # consul config list -kind sameness-group
 # consul config read -kind sameness-group -name unicorn

@@ -1,6 +1,6 @@
 node_name = "client-dc2-foxtrot"
 datacenter = "dc2"
-partition = "chunky"
+partition = "default"
 
 data_dir = "/consul/data"
 log_level = "INFO"
@@ -15,7 +15,7 @@ ports = {
   grpc = 8502
 }
 
-encrypt = "dznVKWl1ri975FUJiddzAPM+3eNP9iXDad2c8hghsKA="
+encrypt = "aPuGh+5UDskRAbkLaXRzFoSOcSM+5vAK+NEYOWHJH7w="
 
 acl {
   enabled = true

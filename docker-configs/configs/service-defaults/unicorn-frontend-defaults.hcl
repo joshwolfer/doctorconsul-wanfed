@@ -1,6 +1,6 @@
 Kind = "service-defaults"
 Name = "unicorn-frontend"
-Partition = "unicorn"
+Partition = "default"
 Namespace = "frontend"
 
 Protocol = "tcp"

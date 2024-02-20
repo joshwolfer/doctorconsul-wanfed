@@ -162,3 +162,33 @@ curl --header "X-Consul-Token: root" --request GET http://127.0.0.1:8500/v1/acl/
 
 # Pull sameness groups
 curl -sk --header "X-Consul-Token: root" "$DC3"/v1/config/sameness-group | jq
+
+
+# ------------------------------------------
+
+consul-server1-dc2               | 2024-02-20T20:58:42.625Z [WARN]  agent.server.rpc: RPC request for DC is currently failing as no path was found: datacenter=dc1 method=ACL.TokenRead
+consul-server1-dc2               | 2024-02-20T20:58:42.625Z [ERROR] agent.acl: Error resolving token: error="Error communicating with the ACL Datacenter: No path to datacenter"
+
+consul-server1-dc2               | 2024-02-20T20:58:38.766Z [INFO]  agent: (WAN) joining: wan_addresses=["*.dc1/192.0.2.2"]
+consul-server1-dc2               | 2024-02-20T20:58:38.768Z [WARN]  agent: (WAN) couldn't join: number_of_nodes=0
+consul-server1-dc2               |   error=
+consul-server1-dc2               |   | 1 error occurred:
+consul-server1-dc2               |   | \t* Failed to join 192.0.2.2:8302: read tcp 192.169.7.4:35354->192.169.7.3:443: read: connection reset by peer
+consul-server1-dc2               |   |
+consul-server1-dc2               |
+consul-server1-dc2               | 2024-02-20T20:58:38.768Z [WARN]  agent: Join cluster failed, will retry: cluster=WAN retry_interval=30s
+consul-server1-dc2               |   error=
+consul-server1-dc2               |   | 1 error occurred:
+consul-server1-dc2               |   | \t* Failed to join 192.0.2.2:8302: read tcp 192.169.7.4:35354->192.169.7.3:443: read: connection reset by peer
+consul-server1-dc2               |   |
+consul-server1-dc2               |
+
+========================================== 
+
+consul-server1-dc2               | 2024-02-20T21:23:04.840Z [ERROR] agent.server.memberlist.wan: memberlist: Failed to send UDP ping: tls: failed to verify certificate: x509: certificate is valid for consul-server1-dc1, server.dc1.consul, localhost, not consul-server1-dc1.server.dc1.consul
+consul-server1-dc1               | 2024-02-20T21:23:04.840Z [ERROR] agent.server.rpc: TLS handshake failed: conn=from=10.5.0.5:60500 error="remote error: tls: bad certificate"
+consul-server1-dc1               | 2024-02-20T21:23:05.199Z [INFO]  agent.server.serf.wan: serf: attempting reconnect to consul-server1-dc2.dc2 10.6.0.2:8302
+
+
+consul-server1-dc1.server.dc1.consul
+consul-server1-dc2.server.dc2.consul

@@ -49,7 +49,7 @@ clear
 # This prevents subsequent commands from causing problems, such as file removal. Make sure we're in the repo clone root.
 # Solves problems down the line.
 CURRENT_DIR=$(basename "$PWD")
-if [ "$CURRENT_DIR" != "doctorconsul" ]; then
+if [ "$CURRENT_DIR" != "doctorconsul-wanfed" ]; then
     echo -e "${RED}Error: The script must be run from the 'doctorconsul' directory.${NC}"
     exit 1
 fi

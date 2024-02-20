@@ -1,6 +1,6 @@
 Kind               = "sameness-group"
 Name               = "unicorn"
-Partition          = "unicorn"
+Partition          = "default"
 DefaultForFailover = false
 Members = [
   { Partition = "unicorn" },

@@ -1,6 +1,6 @@
 node_name = "client-dc1-echo-proj1"
 datacenter = "dc1"
-partition = "proj1"
+partition = "default"
 
 data_dir = "/consul/data"
 log_level = "INFO"

@@ -1,7 +1,7 @@
 service {
   name = "web-chunky"
   id = "web-chunky-v1"
-  partition = "chunky"
+  partition = "default"
   address = "10.6.0.100"
   port = 8000
 

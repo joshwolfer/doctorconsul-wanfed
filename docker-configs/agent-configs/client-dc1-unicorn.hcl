@@ -1,6 +1,6 @@
 node_name = "client-dc1-unicorn"
 datacenter = "dc1"
-partition = "unicorn"
+partition = "default"
 
 data_dir = "/consul/data"
 log_level = "INFO"

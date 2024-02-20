@@ -11,7 +11,6 @@ DC2_ADDR=http://127.0.0.1:8501
 
 DC1_WEB_UI_ADDR=http://localhost:9000/ui/
 DC1_UNICORN_FRONTEND_UI_ADDR=http://localhost:10000/ui/
-DC1_PROMETHEUS=http://localhost:9090/
 
 # ==============================================================================================================================
 #                                                      Outputs
@@ -48,7 +47,6 @@ echo ""
 echo -e "${GRN}Fake Service UI addresses: ${NC}"
 echo -e " ${YELL}DC1 Web:${NC} $DC1_WEB_UI_ADDR"
 echo -e " ${YELL}DC1 Unicorn-Frontend:${NC} $DC1_UNICORN_FRONTEND_UI_ADDR"
-echo -e " ${YELL}DC1 Prometheus WebUI:${NC} $DC1_PROMETHEUS"
 echo ""
 
 # ----------------------------------------------

@@ -7,6 +7,13 @@ log_level = "INFO"
 
 peering { enabled = true }
 
+primary_datacenter = "dc1"
+primary_gateways = ["192.169.7.3:443"]           # Need to set all secondary DCs to explicitly use the primary DC1 MGW
+connect {
+  enabled = true
+  enable_mesh_gateway_wan_federation = true
+}
+
 ui_config = {
   enabled = true
 
@@ -34,11 +41,13 @@ acl {
   default_policy = "deny"
   down_policy = "extend-cache"
   enable_token_persistence = true
+  enable_token_replication = true             # For WAN Fed
 
   tokens {
     initial_management = "root"
     agent = "root"
     default = ""
+    replication = "root"                      # Replication token for WAN Fed. Cheating by using the root token. But whatever.
   }
 }
 
@@ -46,7 +55,7 @@ auto_encrypt = {
   allow_tls = true
 }
 
-encrypt = "dznVKWl1ri975FUJiddzAPM+3eNP9iXDad2c8hghsKA="
+encrypt = "aPuGh+5UDskRAbkLaXRzFoSOcSM+5vAK+NEYOWHJH7w="
 
 tls {
   defaults {

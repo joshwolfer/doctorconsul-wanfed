@@ -6,7 +6,7 @@ data_dir = "/consul/data"
 log_level = "INFO"
 retry_join = ["consul-server1-dc2"]
 
-encrypt = "dznVKWl1ri975FUJiddzAPM+3eNP9iXDad2c8hghsKA="
+encrypt = "aPuGh+5UDskRAbkLaXRzFoSOcSM+5vAK+NEYOWHJH7w="
 
 acl {
   enabled = true

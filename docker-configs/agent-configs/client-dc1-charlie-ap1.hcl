@@ -1,6 +1,6 @@
 node_name = "client-dc1-charlie-ap1"
 datacenter = "dc1"
-partition = "donkey"
+partition = "default"
 
 data_dir = "/consul/data"
 log_level = "INFO"

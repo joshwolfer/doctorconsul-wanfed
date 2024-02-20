@@ -1,6 +1,6 @@
 Kind = "service-defaults"
 Name = "web-chunky"
-Partition = "chunky"
+Partition = "default"
 
 Protocol = "http"
 

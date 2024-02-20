@@ -3,6 +3,6 @@
   "Service": {
     "Service": "unicorn-backend",
     "Namespace": "backend",
-    "Partition": "unicorn"
+    "Partition": "default"
   }
 }
