@@ -31,6 +31,7 @@ services:
   gateway-dc1:
     image: ${CONVOY_IMAGE}
     container_name: gateway-dc1
+    restart: always                     # evidently token replication in wan fed is slow and the gateways die without this.
     environment:
       CONSUL_HTTP_ADDR: 10.5.0.2:8500   # Address of consul-server1-dc1
       CONSUL_GRPC_ADDR: 10.5.0.2:8502   # Address of consul-server1-dc1
@@ -315,6 +316,7 @@ services:
   gateway-dc2:
     image: ${CONVOY_IMAGE}
     container_name: gateway-dc2
+    restart: always                     # evidently token replication in wan fed is slow and the gateways die without this.
     environment:
       CONSUL_HTTP_ADDR: 10.6.0.2:8500   # Address of consul-server1-dc2
       CONSUL_GRPC_ADDR: 10.6.0.2:8502   # Address of consul-server1-dc2

@@ -27,9 +27,13 @@ data_dir = "/consul/data"
 
 addresses = {
   http = "0.0.0.0"
+  https = "0.0.0.0"
   grpc = "0.0.0.0"
   grpc_tls = "0.0.0.0"
 }
+
+advertise_addr = "10.6.0.2"
+advertise_addr_wan = "192.169.7.2"
 
 ports = {
   grpc = 8502
